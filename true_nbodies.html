@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RK4 N-Body Simulation</title>
+    <style>
+        canvas {
+            display: block;
+            margin: auto;
+            background: #000;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 10;
+            font-size: 1.5vw; 
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        input, button {
+            padding: 8px;
+            font-size: 1vw;
+            margin-top: 5px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="simulation"></canvas>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="control-group">
+            <label for="numBodiesInput">Number of Bodies:</label><br>
+            <input type="number" id="numBodiesInput" value="3" min="2">
+        </div>
+        <div id="bodiesContainer"></div>
+        <button id="addBodiesButton">Add Bodies</button>
+        <button id="startButton">Start Simulation</button>
+        <div class="control-group">
+            <label for="method">method(rk4, midpoint, FE, BE):</label><br>
+            <input type="number" id="method" value="1">
+        </div>
+
+        <div class="control-group">
+            <label for="scale">scale(rk4, midpoint, FE, BE):</label><br>
+            <input type="number" id="scale" value="100">
+        </div>
+
+    <script>
+        const canvas = document.getElementById("simulation");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const G = 1.0; 
+        const h = 0.1;
+        let bodies = [];
+        let trails = [];
+        let scale = 100;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const maxTrailLength = 10;
+ 
+        // Generate inputs for body data
+        document.getElementById("addBodiesButton").addEventListener("click", () => {
+            const numBodies = parseInt(document.getElementById("numBodiesInput").value);
+            const container = document.getElementById("bodiesContainer");
+            container.innerHTML = ""; // Clear previous inputs
+            bodies = [];
+            for (let i = 0; i < numBodies; i++) {
+                const bodyHtml = `
+                    <div class="control-group">
+                        <label>Body ${i + 1} Initial Conditions (x, y, vx, vy, mass):</label><br>
+                        <input type="text" id="body${i}Input" value="${Math.random() * 3 - 1},${Math.random() * 2 - 1},${Math.random() * 1 - 0.25},${Math.random() * 1 - 0.25},0.1">
+                    </div>
+                `;
+                container.innerHTML += bodyHtml;
+                trails.push([]);
+            }
+        });
+
+        // RK4 Solver
+        function RK4(f, y, h) {
+            const k1 = f(y);
+            const k2 = f(y.map((yi, i) => yi + h / 2 * k1[i]));
+            const k3 = f(y.map((yi, i) => yi + h / 2 * k2[i]));
+            const k4 = f(y.map((yi, i) => yi + h * k3[i]));
+            return y.map((yi, i) => yi + h / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+        }
+        // Forward Euler ODE solver
+        function forwardEuler(f, y, h) {
+
+            const dydt = f(y); 
+            return y.map((yi, i) => yi + h * dydt[i]);
+        }
+
+        // implicit Euler ODE solver
+        function implicitEuler(f, y, h, maxIterations = 200, tolerance = 1e-6) {
+
+        // Initial guess: forward Euler step (y_next = y + h * f(y))
+        let yNext = y.map((yi, i) => yi + h * f(y)[i]);
+
+        for (let iter = 0; iter < maxIterations; iter++) {
+            const f_yNext = f(yNext);
+            const yNextNew = y.map((yi, i) => yi + h * f_yNext[i]);
+
+            const diff = yNextNew.map((val, i) => Math.abs(val - yNext[i]));
+            const maxDiff = Math.max(...diff);
+            if (maxDiff < tolerance) {
+                return yNextNew; 
+            }
+
+            yNext = yNextNew;
+        }
+
+        console.warn("garbage.");
+        return yNext; 
+    }
+
+    function Midpoint(f, y, h) {
+        const k1 = f(y);
+        const k2 = f(y.map((yi, i) => yi + h / 2 * k1[i]));
+        return y.map((yi, i) => yi + h * k2[i]);
+    }
+
+        function odeSystem(y) {
+            const numBodies = y.length / 4;
+            const accelerations = new Array(y.length).fill(0);
+            for (let i = 0; i < numBodies; i++) {
+                const x1 = y[i * 4];
+                const y1 = y[i * 4 + 1];
+                for (let j = 0; j < numBodies; j++) {
+                    if (i === j) continue;
+                    const x2 = y[j * 4];
+                    const y2 = y[j * 4 + 1];
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+                    const r = Math.sqrt(dx * dx + dy * dy);
+                    const mass = bodies[j].mass;
+                    const factor = G * mass / r ** 3;
+                    accelerations[i * 4 + 2] += factor * dx; 
+                    accelerations[i * 4 + 3] += factor * dy;
+                }
+            }
+            return y.map((yi, i) => (i % 4 < 2 ? y[i + 2] : accelerations[i]));
+        }
+
+        // Draw function
+        function draw(state) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update and draw trails
+            for (let i = 0; i < bodies.length; i++) {
+                const x = centerX + state[i * 4] * scale;
+                const y = centerY + state[i * 4 + 1] * scale;
+                trails[i].push([x, y]);
+                if (trails[i].length > maxTrailLength) trails[i].shift();
+                ctx.strokeStyle = `hsl(${(360 / bodies.length) * i}, 100%, 50%)`;
+                ctx.beginPath();
+                // trails[i].forEach(([tx, ty], j) => {
+                //     if (j === 0) ctx.moveTo(tx, ty);
+                //     else ctx.lineTo(tx, ty);
+                // });
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fill();
+            }
+        }
+
+        document.getElementById("startButton").addEventListener("click", () => {
+            method = parseInt(document.getElementById("method").value);
+            const numBodies = parseInt(document.getElementById("numBodiesInput").value);
+            bodies = [];
+            trails = Array.from({ length: numBodies }, () => []);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let initialState = [];
+            for (let i = 0; i < numBodies; i++) {
+                const [x, y, vx, vy, mass] = document.getElementById(`body${i}Input`).value.split(",").map(Number);
+                initialState.push(x, y, vx, vy);
+                bodies.push({ mass });
+            }
+            function update() {
+                scale = parseInt(document.getElementById("scale").value);
+                method = parseInt(document.getElementById("method").value);
+                if (method == 3) {
+                    initialState = forwardEuler(odeSystem, initialState, h);
+                } else if (method == 1) {
+                    initialState = RK4(odeSystem, initialState, h);
+                } else if (method == 4) {
+                    initialState = implicitEuler(odeSystem, initialState, h);
+                } else if (method == 2) {
+                    initialState = Midpoint(odeSystem, initialState, h);
+                }
+                draw(initialState);
+                requestAnimationFrame(update);
+            }
+            update();
+        });
+    </script>
+</body>
+</html>
