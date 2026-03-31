@@ -1,5 +1,6 @@
 # Nbody-simulator
 
+
 Interactive N-body simulator for exploring gravitational motion, numerical integration, and emergent orbital patterns.
 
 The main application lives in [`n-body-simulation`](./n-body-simulation) and is built with Next.js and TypeScript. There is also a lightweight standalone HTML prototype in [`true_nbodies.html`](./true_nbodies.html).
