@@ -1,19 +1,18 @@
 # Nbody-simulator
-<<<<<<< HEAD
-a program which simulates planet trajectories using differential equations. The user can choose different numerical solvers to see how their performance compares.
 
-n-body-simulation contains a Next.Js prject done in typescript for better performance. However for more lightweight usage one can just use true_bodies.html for a good enough understanding of the project and how the solvers work.
-=======
+Interactive N-body simulator for exploring gravitational motion, numerical integration, and emergent orbital patterns.
 
-An interactive N-body simulator built with Next.js. The project now includes:
+The main application lives in [`n-body-simulation`](./n-body-simulation) and is built with Next.js and TypeScript. There is also a lightweight standalone HTML prototype in [`true_nbodies.html`](./true_nbodies.html).
 
-- a cleaner shared physics engine instead of a single monolithic component
-- multiple integrators: `leapfrog`, `rk4`, `midpoint`, and `euler`
-- curated presets including binary orbits, a figure-eight solution, a mini solar system, and a projected 3D cluster
-- live diagnostics for energy, momentum, center of mass, and peak speed
-- direct body editing, random system generation, trail controls, collision merging, and a small server-side summary endpoint
+## Features
 
-## Run locally
+- multiple numerical integrators: `leapfrog`, `rk4`, `midpoint`, and `euler`
+- 2D and projected 3D simulation modes
+- curated presets including figure-eight, Lagrange triangle, Pythagorean swing, hex ring, and 3D cluster systems
+- live diagnostics for energy, momentum, center of mass, and speed
+- editable bodies, random systems, collision merging, and server-side simulation summaries
+
+## Run the app
 
 ```bash
 cd n-body-simulation
@@ -21,14 +20,17 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Then open `http://localhost:3000`.
 
-## Main app structure
+## Project structure
 
-- `app/simulation/components/Simulation.tsx`: main simulator experience and controls
-- `app/simulation/lib/physics.ts`: stepping logic, integrators, and diagnostics
-- `app/simulation/lib/presets.ts`: hand-authored starting systems
-- `app/api/simulation/route.ts`: validates a submitted configuration and returns a server summary
+- `n-body-simulation/app/simulation/components/Simulation.tsx`: main simulator UI
+- `n-body-simulation/app/simulation/lib/physics.ts`: integrators, stepping logic, and diagnostics
+- `n-body-simulation/app/simulation/lib/presets.ts`: built-in preset systems
+- `n-body-simulation/app/api/simulation/route.ts`: server endpoint for simulation summaries
+- `true_nbodies.html`: lightweight standalone prototype
 
+## Notes
 
->>>>>>> 207a13b (upgrade)
+- `leapfrog` is the default integrator because it behaves well for orbital systems.
+- Some presets are classical configurations and some are hand-tuned cinematic systems designed to produce interesting shapes.
